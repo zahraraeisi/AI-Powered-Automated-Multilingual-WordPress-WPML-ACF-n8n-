@@ -1,0 +1,624 @@
+{
+  "name": "WPML Auto Translate - Test Connection",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1040,
+        48
+      ],
+      "id": "faa8d569-565a-444f-96f7-d2ba685d2de3",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "url": "https://homegermany24.com/wp-json/wp/v2/property/318?acf_format=standard",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -864,
+        64
+      ],
+      "id": "dd6c8a6d-305f-4b96-a952-d6c3071c4a5f",
+      "name": "HTTP Request",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "qpbrRalsKI2m8CLM",
+          "name": "Unnamed credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// این نود دقیقا بعد از HTTP Request قرار می‌گیرد\n// و خروجی همون HTTP قبلی در متغیر $json هست.\n\nconst post = $json; // همون خروجی /wp/v2/property\n\n// 1) فیلدهای اصلی فارسی\nconst titleFa   = post?.title?.rendered ?? '';\nconst contentFa = post?.content?.rendered ?? '';\nconst slugFa    = post?.slug ?? '';\n\n// 2) ACF خام (از همون WP REST)\nconst acfRaw = post?.acf || {};\n\n// 3) لیست فیلدهای ACF که می‌خوای ترجمه بشن\n// (بر اساس همین خروجی‌ای که فرستادی)\nconst acfWhitelist = [\n  'Duration',           // کوتاه‌مدت\n  'occupants',          // چهار نفر\n  'address',            // آدرس\n  'budget_range',       // low\n  'utilities_included', // [\"آب\",\"برق\",...]\n  'target_group',       // [\"فقط خانم\",\"فقط دانشجو\"]\n  'district',           // Wiehre\n  'amenities',          // [\"پذیرایی\",\"بالکن\",...]\n  'transport_nearby',   // Tram Holzmarkt\n  'description',        // متن طولانی HTML\n  'cleaning_fee',       // اگر متنی باشه\n  'ودیعه_دپوزیت',      // مقدار ودیعه (اگر خواستی ترجمه بشه)\n  // هر فیلد متنی دیگری که خودت می‌خوای…\n];\n\n// 4) فقط فیلدهای قابل ترجمه رو از acf جدا می‌کنیم\nfunction pickTranslatableFields(acf, whitelist) {\n  const out = {};\n\n  for (const key of Object.keys(acf)) {\n    if (!whitelist.includes(key)) continue;\n\n    const value = acf[key];\n\n    // فقط رشته‌ها\n    if (typeof value === 'string') {\n      out[key] = value;\n    }\n    // آرایه‌ای از رشته‌ها (مثلاً select چندتایی / checkboxes)\n    else if (Array.isArray(value) && value.every(v => typeof v === 'string')) {\n      out[key] = value;\n    }\n    // repeater ساده: آرایه‌ای از آبجکت‌ها که داخلش فیلدهای متنی هست\n    else if (Array.isArray(value) && value.every(v => typeof v === 'object' && v !== null)) {\n      out[key] = value;\n    }\n    // عدد، بولین، URL، رابطه (city_ref)، گالری و… رو نمی‌فرستیم برای ترجمه\n  }\n\n  return out;\n}\n\nconst acfForTranslation = pickTranslatableFields(acfRaw, acfWhitelist);\n\n// 5) خروجی تمیز برای ادامه‌ی فلو\nreturn [\n  {\n    json: {\n      id: post.id,\n\n      title_fa:   titleFa,\n      content_fa: contentFa,\n      slug_fa:    slugFa,\n\n      // کل ACF فارسی (برای merge بعد از ترجمه)\n      acf_fa: acfRaw,\n\n      // فقط فیلدهای متنی که میریم ترجمه بشن\n      acf_for_translation: acfForTranslation,\n    },\n  },\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -608,
+        64
+      ],
+      "id": "e197b134-ded1-48cc-9d86-ac5f3f0f03d2",
+      "name": "Prepare Original"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4.1-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4.1-MINI"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Translate the following Persian real estate content into German.\n\nReturn ONLY this JSON:\n{\n  \"title_de\": \"...\",\n  \"content_de\": \"...\",\n  \"slug_de\": \"...\"\n}\n\nTitle:\n{{$json[\"title\"]}}\n\nContent:\n{{$json[\"content\"]}}\n\nSlug:\n{{$json[\"slug\"]}}\n"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        -912,
+        464
+      ],
+      "id": "6a84ea4e-39e9-4920-a1c8-70a19a5593c1",
+      "name": "Translate DE",
+      "credentials": {
+        "openAiApi": {
+          "id": "vEz9g3sY0wBzvde1",
+          "name": "OpenAi account"
+        }
+      },
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// داده‌ی اصلی property از HTTP Request\nconst data = $json;\n\n// مقدار خام wpml_translations\nconst rawTranslations = data.wpml_translations;\n\n// یه آرایه‌ی امن می‌سازیم که هر جور ساختاری بود، به آرایه تبدیلش کنیم\nlet translationsArray = [];\n\n// حالت ۱: خودش آرایه است\nif (Array.isArray(rawTranslations)) {\n  translationsArray = rawTranslations;\n}\n\n// حالت ۲: آبجکت است (مثلاً { en: {...}, de: {...} } یا { translations: [...] })\nelse if (rawTranslations && typeof rawTranslations === 'object') {\n  if (Array.isArray(rawTranslations.translations)) {\n    translationsArray = rawTranslations.translations;\n  } else {\n    // فرض می‌کنیم keyها زبان‌ها هستند و valueها خود ترجمه‌ها\n    translationsArray = Object.values(rawTranslations);\n  }\n}\n\n// حالت ۳: رشته‌ی JSON (مثلاً \"\\\"[{...}...]\\\"\")\nelse if (typeof rawTranslations === 'string') {\n  try {\n    const parsed = JSON.parse(rawTranslations);\n    if (Array.isArray(parsed)) {\n      translationsArray = parsed;\n    } else if (parsed && typeof parsed === 'object') {\n      if (Array.isArray(parsed.translations)) {\n        translationsArray = parsed.translations;\n      } else {\n        translationsArray = Object.values(parsed);\n      }\n    }\n  } catch (e) {\n    // اگر parse نشد، بی‌خیال می‌شیم و آرایه خالی می‌مونه\n  }\n}\n\nlet enId = null;\nlet deId = null;\n\n// برای دیباگ اگر لازم شد\ndata._debug_wpml_translations = rawTranslations;\n\n// حالا روی آرایه‌ی امن loop می‌زنیم\nfor (const t of translationsArray) {\n  if (!t || typeof t !== 'object') continue;\n\n  const lang =\n    t.language_code ||\n    t.language ||\n    t.locale ||\n    t.code ||\n    null;\n\n  const postId =\n    t.id ||\n    t.element_id ||\n    t.post_id ||\n    t.translation_id ||\n    null;\n\n  if (!postId || !lang) continue;\n\n  if (lang === 'en') {\n    enId = postId;\n  }\n  if (lang === 'de') {\n    deId = postId;\n  }\n}\n\n// فلگ‌ها و شناسه‌ها را به خروجی اضافه می‌کنیم\ndata.has_en = !!enId;\ndata.has_de = !!deId;\ndata.en_id = enId;\ndata.de_id = deId;\n\nreturn [\n  {\n    json: data,\n  },\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -736,
+        64
+      ],
+      "id": "e7d1cbdd-8dfc-4d64-9145-ca617ffa380e",
+      "name": "Check Existing Translations"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "12403f1b-e3e1-4ea9-ba05-bf429130e14f",
+              "leftValue": "={{$json.has_en}}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        96,
+        128
+      ],
+      "id": "e7cf7727-91ad-4c8b-bc42-a37ff5baf058",
+      "name": "IF EN Exists"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://homegermany24.com/wp-json/wp/v2/property",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  title: $json.title_en,\n  content: $json.content_en,\n  slug: $json.slug_en,\n  status: \"publish\"\n}) }}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        256,
+        368
+      ],
+      "id": "b390fa23-9900-46af-9dd9-390c05a89ed4",
+      "name": "Create EN Property",
+      "alwaysOutputData": true,
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "qpbrRalsKI2m8CLM",
+          "name": "Unnamed credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{$json.en_id ? `https://homegermany24.com/wp-json/wp/v2/property/${$json.en_id}` : ''}}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  title: $json.title_en,\n  content: $json.content_en,\n  slug: $json.slug_en,\n  status: \"publish\"\n}) }}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        288,
+        64
+      ],
+      "id": "83d3e134-6197-4589-97f1-35943848a67f",
+      "name": "Update EN Property",
+      "alwaysOutputData": true,
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "qpbrRalsKI2m8CLM",
+          "name": "Unnamed credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c7224e1f-890b-4d7d-a30d-be3aef8f5edc",
+              "leftValue": "={{ $json.success === true }}",
+              "rightValue": "={{ $json.success === true }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        912,
+        528
+      ],
+      "id": "6935014a-97e5-4cb8-8b0d-c8e3954799db",
+      "name": "IF EN Link Success"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://homegermany24.com/wp-json/acf/v3/property/' + $json.id }}\n",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "fields",
+              "value": "={{ $node[\"Merge EN Result1\"].json.acf_final }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        576,
+        48
+      ],
+      "id": "bf2c9b48-59f0-4195-bae5-f423921e9776",
+      "name": "Update EN ACF",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "qpbrRalsKI2m8CLM",
+          "name": "Unnamed credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "4587b9be-3d21-4727-8435-4411bb524741",
+              "name": "original_id",
+              "value": "={{$node[\"Prepare Original\"].json[\"id\"]}}",
+              "type": "number"
+            },
+            {
+              "id": "e60aff71-de6f-4606-a2f6-d5923d30528c",
+              "name": "translation_id",
+              "value": "={{$node[\"Create EN Property\"].json[\"id\"] || $node[\"Update EN Property\"].json[\"id\"]}}\n",
+              "type": "string"
+            },
+            {
+              "id": "9d5b5740-951e-4a6d-b59a-c8b26048e98a",
+              "name": "lang",
+              "value": "en",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        592,
+        288
+      ],
+      "id": "04c9c114-fb20-4fe3-9386-c39867ae12de",
+      "name": "Prepare EN Link"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://homegermany24.com/wp-json/hg/v1/link-translation",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "X-HG-Secret",
+              "value": "MyTestSecret1234"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "original_id",
+              "value": "={{ $json.original_id }}"
+            },
+            {
+              "name": "translation_id",
+              "value": "={{ $json.translation_id }}"
+            },
+            {
+              "name": "lang",
+              "value": "={{ $json.lang }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        784,
+        256
+      ],
+      "id": "99ef1e1a-40d4-4d3e-86b6-39785c69c36b",
+      "name": "Link EN Translation"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4.1-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4.1-MINI"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are a professional real estate translator.\n\nYou receive one JSON object in the current item with these keys:\n- \"title_fa\": Persian title (string)\n- \"content_fa\": Persian HTML content (string)\n- \"slug_fa\": Persian slug (string)\n\nSource JSON:\n{{ JSON.stringify($json, null, 2) }}\n\nYour tasks:\n\n1) Translate \"title_fa\" to \"title_en\":\n   - Natural, fluent English.\n   - Keep the same meaning.\n\n2) Translate \"content_fa\" (HTML) to \"content_en\":\n   - Keep ALL HTML tags exactly as they are.\n   - Only translate the visible Persian text inside the tags.\n\n3) Translate \"slug_fa\" to \"slug_en\":\n   - Produce a clean English slug.\n   - Lowercase, hyphen-separated, URL-safe.\n\nReturn ONLY valid JSON (no markdown, no comments, no ```), with EXACTLY this structure:\n\n{\n  \"title_en\": \"\",\n  \"content_en\": \"\",\n  \"slug_en\": \"\"\n}\n"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        -816,
+        288
+      ],
+      "id": "aa1129a7-0665-4ac4-b7bf-296a6136217a",
+      "name": "Translate EN Core",
+      "credentials": {
+        "openAiApi": {
+          "id": "vEz9g3sY0wBzvde1",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "let content = '';\n\n// خروجی OpenAI در n8n این‌شکلیه:\n// { index: 0, message: { role: 'assistant', content: '...'} }\n\nif ($json.message && typeof $json.message.content === 'string') {\n  content = $json.message.content;\n} else if (typeof $json.content === 'string') {\n  content = $json.content;\n} else if (typeof $json === 'string') {\n  content = $json;\n}\n\ncontent = (content || '').trim();\n\n// اگر مدل احیاناً ```json ... ``` برگردونه، پاکش می‌کنیم\ncontent = content\n  .replace(/^```json/i, '')\n  .replace(/^```/, '')\n  .replace(/```$/, '')\n  .trim();\n\nif (!content) {\n  throw new Error('Parse EN Core: empty content from LLM');\n}\n\nlet data;\ntry {\n  data = JSON.parse(content);\n} catch (error) {\n  throw new Error(\n    'Parse EN Core: JSON parse error: ' +\n    error.message +\n    '\\nRAW:\\n' +\n    content\n  );\n}\n\n// خروجی تمیز برای ادامه‌ی فلو\nreturn [\n  {\n    json: {\n      title_en:   data.title_en || '',\n      content_en: data.content_en || '',\n      slug_en:    data.slug_en   || '',\n    },\n  },\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -384,
+        224
+      ],
+      "id": "ea885c6b-dc0c-4974-a07b-95545f9ad73e",
+      "name": "Parse EN Core"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4.1-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4.1-MINI"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are a professional real estate translator.\n\nYou receive one JSON object called \"acf_for_translation\" which contains ONLY the ACF fields that must be translated from Persian (fa) to English (en).\n\nThe object is:\n\n{{ JSON.stringify($json[\"acf_for_translation\"], null, 2) }}\n\nImportant:\n- The keys and structure of \"acf_for_translation\" must be preserved exactly.\n- It may contain:\n  - Simple text fields (strings)\n  - Arrays of strings (checkboxes / selects)\n  - Arrays of objects (repeaters) with text fields inside.\n\nYour task:\n\nTranslate ALL Persian text values in this object into English and put the result into \"acf_en\".\n\nRules:\n- For simple strings: translate the text.\n- For HTML strings: keep ALL HTML tags and only translate the visible text.\n- For arrays of strings: keep them arrays and translate each string.\n- For arrays of objects: keep the same structure and keys, only translate string values.\n- DO NOT change numbers, booleans, IDs, URLs or slugs.\n- If a value is already in English, keep it as it is.\n- \"acf_en\" MUST contain all keys from \"acf_for_translation\". Do not drop or rename keys.\n\nReturn ONLY valid JSON (no markdown, no comments, no ```), with EXACTLY this structure:\n\n{\n  \"acf_en\": {}\n}\n"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        -352,
+        64
+      ],
+      "id": "30d81167-4653-4e6b-98ca-ec3df34f0cc5",
+      "name": "Translate EN ACF",
+      "credentials": {
+        "openAiApi": {
+          "id": "vEz9g3sY0wBzvde1",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "let content = '';\n\nif ($json.message && typeof $json.message.content === 'string') {\n  content = $json.message.content;\n} else if (typeof $json.content === 'string') {\n  content = $json.content;\n} else if (typeof $json === 'string') {\n  content = $json;\n}\n\ncontent = (content || '').trim();\n\n// اگر مدل ```json ... ``` برگردونه، پاکش می‌کنیم\ncontent = content\n  .replace(/^```json/i, '')\n  .replace(/^```/, '')\n  .replace(/```$/, '')\n  .trim();\n\nif (!content) {\n  throw new Error('Parse EN ACF: empty content from LLM');\n}\n\nlet data;\ntry {\n  data = JSON.parse(content);\n} catch (error) {\n  throw new Error(\n    'Parse EN ACF: JSON parse error: ' +\n    error.message +\n    '\\nRAW:\\n' +\n    content\n  );\n}\n\nif (!data.acf_en || typeof data.acf_en !== 'object') {\n  throw new Error(\n    'Parse EN ACF: \"acf_en\" missing or invalid. Got: ' +\n    JSON.stringify(data, null, 2)\n  );\n}\n\nreturn [\n  {\n    json: {\n      acf_en: data.acf_en,\n    },\n  },\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -112,
+        -48
+      ],
+      "id": "bf46c547-9db0-4fc8-a971-b6d6efc96d59",
+      "name": "Parse EN ACF"
+    },
+    {
+      "parameters": {
+        "jsCode": "// از نودهای قبلی داده می‌گیریم\nconst original      = $node[\"Prepare Original\"].json;          // فارسی + ACF کامل\nconst core          = $node[\"Parse EN Core\"].json;             // title_en, content_en, slug_en\nconst acfTranslated = $node[\"Parse EN ACF\"].json;              // acf_en\nconst translations  = $node[\"Check Existing Translations\"].json || {}; // has_en, en_id, ...\n\n// ACF فارسی کامل\nconst acfFa = original.acf_fa || {};\n// ACF انگلیسی ترجمه‌شده\nconst acfEn = acfTranslated.acf_en || {};\n\n// مرج: ترجمه‌ها روی نسخه‌ی فارسی override می‌کنند\nconst acfFinal = {\n  ...acfFa,\n  ...acfEn,\n};\n\n// خروجی نهایی برای ادامه‌ی فلو\nreturn [\n  {\n    json: {\n      original_id: original.id,\n\n      // EN core\n      title_en:   core.title_en,\n      content_en: core.content_en,\n      slug_en:    core.slug_en,\n\n      // فقط برای دیباگ\n      acf_en: acfEn,\n\n      // اینو می‌فرستیم برای ACF API\n      acf_final: acfFinal,\n\n      // WPML info\n      has_en: translations.has_en ?? false,\n      en_id:  translations.en_id ?? null,\n    },\n  },\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -64,
+        304
+      ],
+      "id": "c3a3c384-da6b-47fd-a6ab-25402fd6b6ce",
+      "name": "Merge EN Result1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Check Existing Translations",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Original": {
+      "main": [
+        [
+          {
+            "node": "Translate EN Core",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Translate DE": {
+      "main": [
+        []
+      ]
+    },
+    "Check Existing Translations": {
+      "main": [
+        [
+          {
+            "node": "Prepare Original",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF EN Exists": {
+      "main": [
+        [
+          {
+            "node": "Update EN Property",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create EN Property",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create EN Property": {
+      "main": [
+        [
+          {
+            "node": "Update EN ACF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update EN Property": {
+      "main": [
+        [
+          {
+            "node": "Update EN ACF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update EN ACF": {
+      "main": [
+        [
+          {
+            "node": "Prepare EN Link",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare EN Link": {
+      "main": [
+        [
+          {
+            "node": "Link EN Translation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Link EN Translation": {
+      "main": [
+        [
+          {
+            "node": "IF EN Link Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Translate EN Core": {
+      "main": [
+        [
+          {
+            "node": "Parse EN Core",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse EN Core": {
+      "main": [
+        [
+          {
+            "node": "Translate EN ACF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Translate EN ACF": {
+      "main": [
+        [
+          {
+            "node": "Parse EN ACF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse EN ACF": {
+      "main": [
+        [
+          {
+            "node": "Merge EN Result1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge EN Result1": {
+      "main": [
+        [
+          {
+            "node": "IF EN Exists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "e09ce5bb-b20f-4908-82da-0d39d0b64068",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "90508cb8f2d83999afaa216d5287cc3a6638d0fa1d4e1e64e87818d08c9f8efe"
+  },
+  "id": "BioTrTnuzRs5LbQA",
+  "tags": []
+}
