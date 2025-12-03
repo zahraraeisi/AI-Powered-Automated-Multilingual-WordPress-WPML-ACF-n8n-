@@ -357,3 +357,11 @@ If you’re working with:
 Feel free to fork, experiment, and adapt this workflow to your own WordPress + WPML + ACF setup.
 
 If you build extra features (batch processing, better WPML linking, extra languages), contributions and ideas are very welcome. 🙌
+---
+
+## 👩‍💻 Author
+
+**Zahra Raeisi**
+Automation & Applied AI with n8n
+GitHub: [https://github.com/zahraraeisi](https://github.com/zahraraeisi)
+LinkedIn: [https://www.linkedin.com/in/zahraraeisi](https://www.linkedin.com/in/zahraraeisi)
