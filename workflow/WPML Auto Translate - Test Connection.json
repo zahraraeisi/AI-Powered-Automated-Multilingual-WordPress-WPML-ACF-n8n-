@@ -14,7 +14,7 @@
     },
     {
       "parameters": {
-        "url": "https://homegermany24.com/wp-json/wp/v2/property/318?acf_format=standard",
+        "url": "https://your-site.com/wp-json/wp/v2/property/318?acf_format=standard",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpBasicAuth",
         "options": {}
@@ -25,7 +25,7 @@
         -864,
         64
       ],
-      "id": "dd6c8a6d-305f-4b96-a952-d6c3071c4a5f",
+      "id": "your-id",
       "name": "HTTP Request",
       "credentials": {
         "httpBasicAuth": {
@@ -74,7 +74,7 @@
       "name": "Translate DE",
       "credentials": {
         "openAiApi": {
-          "id": "vEz9g3sY0wBzvde1",
+          "id": "vEz9g3sY80990900wBzvde1",
           "name": "OpenAi account"
         }
       },
@@ -129,7 +129,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://homegermany24.com/wp-json/wp/v2/property",
+        "url": "https://your-site.com/wp-json/wp/v2/property",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpBasicAuth",
         "sendBody": true,
@@ -156,7 +156,7 @@
     {
       "parameters": {
         "method": "PATCH",
-        "url": "={{$json.en_id ? `https://homegermany24.com/wp-json/wp/v2/property/${$json.en_id}` : ''}}",
+        "url": "={{$json.en_id ? `https://your-site.com/wp-json/wp/v2/property/${$json.en_id}` : ''}}",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpBasicAuth",
         "sendBody": true,
@@ -217,7 +217,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ 'https://homegermany24.com/wp-json/acf/v3/property/' + $json.id }}\n",
+        "url": "={{ 'https://your-site.com/wp-json/acf/v3/property/' + $json.id }}\n",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpBasicAuth",
         "sendBody": true,
@@ -284,7 +284,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://homegermany24.com/wp-json/hg/v1/link-translation",
+        "url": "https://your-site.com/wp-json/hg/v1/link-translation",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -353,7 +353,7 @@
       "name": "Translate EN Core",
       "credentials": {
         "openAiApi": {
-          "id": "vEz9g3sY0wBzvde1",
+          "id": "vEz9g3sY0w890809B3213123",
           "name": "OpenAi account"
         }
       }
@@ -398,7 +398,7 @@
       "name": "Translate EN ACF",
       "credentials": {
         "openAiApi": {
-          "id": "vEz9g3sY0wBzvde1",
+          "id": "vEz9g3srtyrtyrtyY0wB768678zvde1",
           "name": "OpenAi account"
         }
       }
